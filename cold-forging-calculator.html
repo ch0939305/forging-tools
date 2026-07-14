@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>冷鍛工藝計算器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--primary:#2E7D32;--primary-light:#4CAF50;--primary-dark:#1B5E20;--bg:#f0f4f0;--card:#fff;--text:#333;--text-light:#666;--border:#ddd;--radius:12px;--shadow:0 2px 8px rgba(0,0,0,0.1)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;overflow-x:hidden}
+/* Header */
+.header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:16px;text-align:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,0.15)}
+.header h1{font-size:18px;font-weight:600}
+.header .subtitle{font-size:12px;opacity:0.85;margin-top:2px}
+/* Menu Grid */
+.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px}
+.menu-item{background:var(--card);border-radius:var(--radius);padding:14px 8px;text-align:center;box-shadow:var(--shadow);cursor:pointer;transition:all 0.2s;user-select:none;-webkit-user-select:none}
+.menu-item:active{transform:scale(0.95);background:#f5f5f5}
+.menu-item .icon{font-size:28px;margin-bottom:6px}
+.menu-item .label{font-size:12px;font-weight:500;color:var(--primary-dark);line-height:1.3}
+/* Page */
+.page{display:none;padding:12px;padding-bottom:80px}
+.page.active{display:block}
+.page-title{font-size:16px;font-weight:600;color:var(--primary);margin:8px 0 12px;padding-left:8px;border-left:3px solid var(--primary)}
+/* Card */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card-title{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--primary-light)}
+/* Form */
+.form-row{display:flex;align-items:center;margin-bottom:10px;gap:8px}
+.form-row label{font-size:13px;color:var(--text-light);min-width:70px;white-space:nowrap}
+.form-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;outline:none;transition:border 0.2s;background:#fafafa}
+.form-row input:focus{border-color:var(--primary-light);background:#fff}
+.form-row select{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;outline:none;background:#fafafa;color:var(--text)}
+/* Mode Switch */
+.mode-switch{display:flex;background:#e8f5e9;border-radius:8px;padding:3px;margin-bottom:12px}
+.mode-switch button{flex:1;border:none;background:transparent;padding:8px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--text-light);transition:all 0.2s}
+.mode-switch button.active{background:var(--primary);color:#fff;font-weight:500}
+/* Button */
+.btn{width:100%;padding:12px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;margin-top:8px}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
+.btn-secondary{background:#e8f5e9;color:var(--primary);border:1px solid var(--primary-light)}
+.btn-danger{background:#ffebee;color:#c62828;border:1px solid #ef9a9a}
+/* Result */
+.result-box{background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border-radius:var(--radius);padding:14px;margin-top:12px;border-left:4px solid var(--primary)}
+.result-box .result-title{font-size:13px;font-weight:600;color:var(--primary-dark);margin-bottom:8px}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed #c8e6c9;font-size:13px}
+.result-row:last-child{border:none}
+.result-row .r-label{color:var(--text-light)}
+.result-row .r-value{font-weight:600;color:var(--primary-dark);font-size:14px}
+.result-row.highlight{background:#c8e6c9;border-radius:6px;padding:8px 10px;margin-top:4px}
+.result-row.highlight .r-value{color:#c62828;font-size:16px}
+/* Shape Item */
+.shape-item{background:#f5f5f5;border-radius:8px;padding:10px;margin-bottom:8px;position:relative}
+.shape-item .remove-btn{position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;border:1px solid #ef9a9a;background:#ffebee;color:#c62828;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.add-shape-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border:2px dashed var(--primary-light);border-radius:8px;color:var(--primary);font-size:13px;cursor:pointer;background:#f1f8e9;margin-top:8px}
+.add-shape-btn:active{background:#e8f5e9}
+/* Formula */
+.formula-box{background:#f5f5f5;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;color:var(--text-light);line-height:1.6;font-family:"Courier New",monospace}
+/* Info box */
+.info-box{background:#e3f2fd;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;color:#1565c0;line-height:1.5}
+.warning-box{background:#fff3e0;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;color:#e65100;line-height:1.5}
+/* Back button */
+.back-btn{display:inline-flex;align-items:center;gap:4px;color:var(--primary);font-size:14px;cursor:pointer;padding:8px 0;margin-bottom:4px;font-weight:500}
+.back-btn:active{opacity:0.6}
+/* Toggle */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.toggle-row label{font-size:13px;color:var(--text-light)}
+.toggle{width:44px;height:24px;border-radius:12px;background:#ccc;position:relative;cursor:pointer;transition:background 0.2s}
+.toggle.active{background:var(--primary-light)}
+.toggle::after{content:'';width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle.active::after{transform:translateX(20px)}
+/* Tab */
+.tab-bar{display:flex;overflow-x:auto;gap:0;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+.tab-bar button{flex:1;white-space:nowrap;padding:10px 12px;border:none;background:transparent;font-size:13px;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+.tab-bar button.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+/* Scrollbar */
+::-webkit-scrollbar{width:0;height:0}
+/* Footer */
+.footer{text-align:center;padding:16px;color:var(--text-light);font-size:11px}
+</style>
+</head>
+<body>
+
+<!-- ========== 主頁 ========== -->
+<div id="homePage" class="page active">
+<div class="header">
+<h1>⚙️ 冷鍛工藝計算器</h1>
+<div class="subtitle">Cold Forging Calculator</div>
+</div>
+<div class="menu-grid" id="mainMenu">
+<div class="menu-item" onclick="goPage('cone')"><div class="icon">📐</div><div class="label">圓台計算</div></div>
+<div class="menu-item" onclick="goPage('reduction')"><div class="icon">📏</div><div class="label">強束比計算</div></div>
+<div class="menu-item" onclick="goPage('deformation')"><div class="icon">🔧</div><div class="label">變形計算</div></div>
+<div class="menu-item" onclick="goPage('wire')"><div class="icon">📊</div><div class="label">線長與齒輪</div></div>
+<div class="menu-item" onclick="goPage('volume')"><div class="icon">🧊</div><div class="label">體積計算</div></div>
+<div class="menu-item" onclick="goPage('extrusion')"><div class="icon">⬆️</div><div class="label">擠壓計算</div></div>
+<div class="menu-item" onclick="goPage('upsetting')"><div class="icon">⬇️</div><div class="label">鐓粗計算</div></div>
+<div class="menu-item" onclick="goPage('drawing')"><div class="icon">🔄</div><div class="label">拉伸計算</div></div>
+<div class="menu-item" onclick="goPage('cupHead')"><div class="icon">🔩</div><div class="label">杯頭成形</div></div>
+</div>
+<div class="card" style="margin:0 16px 16px">
+<div class="card-title"><span class="dot"></span>常用材料密度</div>
+<div class="result-row"><span class="r-label">碳鋼 / 合金鋼</span><span class="r-value">7.85 g/cm³</span></div>
+<div class="result-row"><span class="r-label">不鏽鋼 (304)</span><span class="r-value">7.93 g/cm³</span></div>
+<div class="result-row"><span class="r-label">鋁合金</span><span class="r-value">2.70 g/cm³</span></div>
+<div class="result-row"><span class="r-label">黃銅</span><span class="r-value">8.50 g/cm³</span></div>
+<div class="result-row"><span class="r-label">鈦合金</span><span class="r-value">4.51 g/cm³</span></div>
+</div>
+<div class="footer">冷鍛工藝計算器 v1.0</div>
+</div>
+
+<!-- ========== 圓台計算 ========== -->
+<div id="conePage" class="page">
+<div class="header"><h1>📐 圓台計算</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">圓台參數計算</div>
+<div class="info-box">輸入任意3個條件，自動計算其餘參數。圓台為圓錐截頂後的形狀。</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>基本參數</div>
+<div class="form-row"><label>上徑 D₁ (mm)</label><input type="number" id="coneD1" placeholder="留空則自動計算"></div>
+<div class="form-row"><label>下徑 D₂ (mm)</label><input type="number" id="coneD2" placeholder="留空則自動計算"></div>
+<div class="form-row"><label>高度 H (mm)</label><input type="number" id="coneH" placeholder="留空則自動計算"></div>
+<div class="form-row"><label>斜角 α (°)</label><input type="number" id="coneA" placeholder="留空則自動計算"></div>
+<div class="form-row"><label>體積 V (mm³)</label><input type="number" id="coneV" placeholder="留空則自動計算"></div>
+<button class="btn btn-primary" onclick="calcCone()">計算</button>
+</div>
+<div class="formula-box">
+公式：<br>
+V = (π × H / 3) × (R₁² + R₁×R₂ + R₂²)<br>
+tan(α) = (R₂ - R₁) / H<br>
+其中 R₁ = D₁/2, R₂ = D₂/2
+</div>
+<div id="coneResult"></div>
+</div>
+</div>
+
+<!-- ========== 強束比計算 ========== -->
+<div id="reductionPage" class="page">
+<div class="header"><h1>📏 強束比計算</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">階梯桿縮徑計算</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>原始尺寸</div>
+<div class="form-row"><label>原始直徑 d₀ (mm)</label><input type="number" id="redD0" value="10"></div>
+<div class="form-row"><label>原始高度 h₀ (mm)</label><input type="number" id="redH0" value="20"></div>
+</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>目標尺寸</div>
+<div class="form-row"><label>目標直徑 d₁ (mm)</label><input type="number" id="redD1" value="8"></div>
+<div class="form-row"><label>目標高度 h₁ (mm)</label><input type="number" id="redH1" placeholder="自動計算" disabled style="background:#eee"></div>
+</div>
+<button class="btn btn-primary" onclick="calcReduction()">計算強束比</button>
+<div class="formula-box">
+公式：<br>
+λ = (d₀ / d₁)² = 強束比<br>
+h₁ = h₀ × λ<br>
+體積不變原理：V₀ = V₁
+</div>
+<div id="reductionResult"></div>
+</div>
+</div>
+
+<!-- ========== 變形計算 ========== -->
+<div id="deformationPage" class="page">
+<div class="header"><h1>🔧 變形計算</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">體積不變變形計算</div>
+<div class="mode-switch">
+<button id="defMode1" class="active" onclick="setDefMode(1)">原始→目標</button>
+<button id="defMode2" onclick="setDefMode(2)">目標→原始</button>
+</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>原始（圓柱）</div>
+<div class="form-row"><label>直徑 (mm)</label><input type="number" id="defD0" value="10"></div>
+<div class="form-row"><label>高度 (mm)</label><input type="number" id="defH0" value="20"></div>
+</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>目標形狀</div>
+<div class="form-row">
+<label>形狀類型</label>
+<select id="defShape">
+<option value="cylinder">圓柱</option>
+<option value="hexagon">六角柱</option>
+<option value="ellipse">橢圓柱</option>
+</select>
+</div>
+<div class="form-row"><label>目標直徑 (mm)</label><input type="number" id="defD1" value="8"></div>
+<div class="form-row" id="defExtraRow" style="display:none"><label>第二邊長 (mm)</label><input type="number" id="defD2" placeholder="橢圓用"></div>
+<div class="form-row"><label>目標高度 (mm)</label><input type="number" id="defH1" placeholder="自動計算" disabled style="background:#eee"></div>
+</div>
+<button class="btn btn-primary" onclick="calcDeformation()">計算變形</button>
+<div id="deformationResult"></div>
+</div>
+</div>
+
+<!-- ========== 線長與齒輪 ========== -->
+<div id="wirePage" class="page">
+<div class="header"><h1>📊 線長與齒輪</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">線材長度計算</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>材料參數</div>
+<div class="form-row">
+<label>材料</label>
+<select id="wireMat">
+<option value="7.85">碳鋼 (7.85)</option>
+<option value="7.93">不鏽鋼 304 (7.93)</option>
+<option value="2.70">鋁合金 (2.70)</option>
+<option value="8.50">黃銅 (8.50)</option>
+<option value="4.51">鈦合金 (4.51)</option>
+</select>
+</div>
+<div class="form-row"><label>線徑 (mm)</label><input type="number" id="wireDia" value="5"></div>
+<div class="form-row"><label>重量 (g)</label><input type="number" id="wireW" value="100"></div>
+<div class="form-row"><label>利用率 k</label><input type="number" id="wireK" value="0.95" step="0.01"></div>
+</div>
+<button class="btn btn-primary" onclick="calcWire()">計算線長</button>
+<div class="formula-box">
+公式：<br>
+L = (W × 1000) / (ρ × A × k)<br>
+A = π × d² / 4<br>
+W = 重量(g), ρ = 密度(g/cm³), k = 利用率
+</div>
+<div id="wireResult"></div>
+</div>
+</div>
+
+<!-- ========== 體積計算 ========== -->
+<div id="volumePage" class="page">
+<div class="header"><h1>🧊 體積計算</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">外形 - 內形 體積計算</div>
+<div class="tab-bar">
+<button id="volTab1" class="active" onclick="setVolTab(1)">圓錐/圓台</button>
+<button id="volTab2" onclick="setVolTab(2)">球體</button>
+<button id="volTab3" onclick="setVolTab(3)">圓柱</button>
+</div>
+<!-- 外形 -->
+<div class="card">
+<div class="card-title"><span class="dot" style="background:#c62828"></span>外形</div>
+<div id="outerShape"></div>
+</div>
+<!-- 內形 -->
+<div class="card">
+<div class="card-title"><span class="dot" style="background:#1565c0"></span>內形（可選）</div>
+<div id="innerShape"></div>
+<div class="toggle-row">
+<label>啟用內形計算</label>
+<div class="toggle active" id="innerToggle" onclick="toggleInner()"></div>
+</div>
+</div>
+<button class="btn btn-primary" onclick="calcVolume()">計算體積</button>
+<div id="volumeResult"></div>
+</div>
+</div>
+
+<!-- ========== 擠壓計算 ========== -->
+<div id="extrusionPage" class="page">
+<div class="header"><h1>⬆️ 擠壓計算</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">正向擠壓計算</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>坯料參數</div>
+<div class="form-row"><label>直徑 (mm)</label><input type="number" id="extD0" value="20"></div>
+<div class="form-row"><label>高度 (mm)</label><input type="number" id="extH0" value="50"></div>
+</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>擠壓模參數</div>
+<div class="form-row"><label>模口直徑 (mm)</label><input type="number" id="extD1" value="10"></div>
+<div class="form-row"><label>摩擦係數 μ</label><input type="number" id="extMu" value="0.1" step="0.01"></div>
+<div class="form-row"><label>屈服強度 σ (MPa)</label><input type="number" id="extSigma" value="300"></div>
+</div>
+<button class="btn btn-primary" onclick="calcExtrusion()">計算擠壓力</button>
+<div id="extrusionResult"></div>
+</div>
+</div>
+
+<!-- ========== 鐓粗計算 ========== -->
+<div id="upsettingPage" class="page">
+<div class="header"><h1>⬇️ 鐓粗計算</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">自由鐓粗計算</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>原始尺寸</div>
+<div class="form-row"><label>直徑 (mm)</label><input type="number" id="upD0" value="10"></div>
+<div class="form-row"><label>高度 (mm)</label><input type="number" id="upH0" value="30"></div>
+</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>鐓粗後</div>
+<div class="form-row"><label>目標高度 (mm)</label><input type="number" id="upH1" value="15"></div>
+<div class="form-row"><label>摩擦係數 μ</label><input type="number" id="upMu" value="0.1" step="0.01"></div>
+<div class="form-row"><label>屈服強度 σ (MPa)</label><input type="number" id="upSigma" value="300"></div>
+</div>
+<button class="btn btn-primary" onclick="calcUpsetting()">計算鐓粗力</button>
+<div id="upsettingResult"></div>
+</div>
+</div>
+
+<!-- ========== 拉伸計算 ========== -->
+<div id="drawingPage" class="page">
+<div class="header"><h1>🔄 拉伸計算</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">冷拉伸計算</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>拉伸前</div>
+<div class="form-row"><label>直徑 (mm)</label><input type="number" id="drD0" value="8"></div>
+</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>拉伸後</div>
+<div class="form-row"><label>直徑 (mm)</label><input type="number" id="drD1" value="6"></div>
+<div class="form-row"><label>屈服強度 σ (MPa)</label><input type="number" id="drSigma" value="300"></div>
+<div class="form-row"><label>摩擦係數 μ</label><input type="number" id="drMu" value="0.08" step="0.01"></div>
+</div>
+<button class="btn btn-primary" onclick="calcDrawing()">計算拉伸力</button>
+<div id="drawingResult"></div>
+</div>
+</div>
+
+<!-- ========== 杯頭成形 ========== -->
+<div id="cupHeadPage" class="page">
+<div class="header"><h1>🔩 杯頭成形</h1></div>
+<div style="padding:12px">
+<div class="back-btn" onclick="goHome()">← 返回主頁</div>
+<div class="page-title">杯頭螺絲成形計算</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>螺絲參數</div>
+<div class="form-row"><label>螺紋直徑 (mm)</label><input type="number" id="cupD" value="6"></div>
+<div class="form-row"><label>頭部直徑 (mm)</label><input type="number" id="cupHeadD" value="10"></div>
+<div class="form-row"><label>頭部高度 (mm)</label><input type="number" id="cupHeadH" value="4"></div>
+<div class="form-row"><label>總長 (mm)</label><input type="number" id="cupL" value="20"></div>
+</div>
+<div class="card">
+<div class="card-title"><span class="dot"></span>材料</div>
+<div class="form-row">
+<label>材料</label>
+<select id="cupMat">
+<option value="7.85">碳鋼 (7.85)</option>
+<option value="7.93">不鏽鋼 304 (7.93)</option>
+<option value="2.70">鋁合金 (2.70)</option>
+</select>
+</div>
+</div>
+<button class="btn btn-primary" onclick="calcCupHead()">計算</button>
+<div id="cupHeadResult"></div>
+</div>
+</div>
+
+<script>
+// ========== 工具函數 ==========
+function $(id){return document.getElementById(id)}
+function goPage(page){
+document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+$(page+'Page').classList.add('active');
+window.scrollTo(0,0);
+}
+function goHome(){
+document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+$('homePage').classList.add('active');
+window.scrollTo(0,0);
+}
+function makeShapeForm(prefix, showHeight){
+let h = showHeight!==false?`<div class="form-row"><label>高度/長度 (mm)</label><input type="number" id="${prefix}H" value="10"></div>`:'';
+return `
+<div class="form-row"><label>上徑 (mm)</label><input type="number" id="${prefix}D1" value="10"></div>
+<div class="form-row"><label>下徑 (mm)</label><input type="number" id="${prefix}D2" value="6"></div>
+${h}
+`;
+}
+// 初始化體積頁面
+$('outerShape').innerHTML = makeShapeForm('out','');
+$('innerShape').innerHTML = makeShapeForm('in','');
+
+// ========== 圓台計算 ==========
+function calcCone(){
+let D1=parseFloat($('coneD1').value), D2=parseFloat($('coneD2').value),
+H=parseFloat($('coneH').value), A=parseFloat($('coneA').value),
+V=parseFloat($('coneV').value);
+let inputs=[D1,D2,H,A,V].filter(v=>!isNaN(v)).length;
+if(inputs<3){$('coneResult').innerHTML='<div class="warning-box">請至少輸入3個條件</div>';return}
+
+let r1=D1/2, r2=D2/2, result='', calculated=[];
+
+if(isNaN(D1)||isNaN(D2)||isNaN(H)){
+// 需要計算某個值
+if(!isNaN(D1)&&!isNaN(D2)&&!isNaN(A)){
+H=Math.abs(r2-r1)/Math.tan(A*Math.PI/180);
+calculated.push(`高度 H = ${H.toFixed(3)} mm`);
+}
+if(!isNaN(D1)&&!isNaN(H)&&!isNaN(A)){
+let t=Math.tan(A*Math.PI/180);
+if(r2>r1) r2=r1+H*t; else r1=r2+H*t;
+if(isNaN(D2)){D2=r2*2;calculated.push(`下徑 D₂ = ${D2.toFixed(3)} mm`)}
+else{D1=r1*2;calculated.push(`上徑 D₁ = ${D1.toFixed(3)} mm`)}
+}
+r1=D1/2; r2=D2/2;
+}
+
+if(isNaN(V)){
+V=Math.PI*H/3*(r1*r1+r1*r2+r2*r2);
+calculated.push(`體積 V = ${V.toFixed(2)} mm³ (${(V/1000).toFixed(2)} cm³)`);
+}
+if(isNaN(A)){
+A=Math.atan(Math.abs(r2-r1)/H)*180/Math.PI;
+calculated.push(`斜角 α = ${A.toFixed(3)}°`);
+}
+
+result='<div class="result-box"><div class="result-title">✅ 計算結果</div>';
+calculated.forEach(c=>{
+result+=`<div class="result-row"><span class="r-label">📌</span><span class="r-value">${c}</span></div>`;
+});
+result+=`<div class="result-row highlight"><span class="r-label">最終體積</span><span class="r-value">${V.toFixed(2)} mm³</span></div>`;
+result+='</div>';
+$('coneResult').innerHTML=result;
+}
+
+// ========== 強束比 ==========
+function calcReduction(){
+let d0=parseFloat($('redD0').value), h0=parseFloat($('redH0').value),
+d1=parseFloat($('redD1').value);
+if(!d0||!h0||!d1){$('reductionResult').innerHTML='<div class="warning-box">請填寫所有參數</div>';return}
+
+let lambda=Math.pow(d0/d1,2);
+let h1=h0*lambda;
+let A0=Math.PI*d0*d0/4, A1=Math.PI*d1*d1/4;
+let V=A0*h0;
+let reduction=(1-d1/d0)*100;
+
+$('redH1').value=h1.toFixed(3);
+
+let html=`<div class="result-box">
+<div class="result-title">✅ 強束比計算結果</div>
+<div class="result-row"><span class="r-label">原始體積</span><span class="r-value">${V.toFixed(2)} mm³</span></div>
+<div class="result-row"><span class="r-label">原始截面積 A₀</span><span class="r-value">${A0.toFixed(2)} mm²</span></div>
+<div class="result-row"><span class="r-label">目標截面積 A₁</span><span class="r-value">${A1.toFixed(2)} mm²</span></div>
+<div class="result-row highlight"><span class="r-label">強束比 λ</span><span class="r-value">${lambda.toFixed(4)}</span></div>
+<div class="result-row"><span class="r-label">目標高度 h₁</span><span class="r-value">${h1.toFixed(3)} mm</span></div>
+<div class="result-row"><span class="r-label">直徑縮減率</span><span class="r-value">${reduction.toFixed(2)}%</span></div>
+</div>`;
+
+if(reduction>30) html+=`<div class="warning-box">⚠️ 縮減率超過30%，建議分步成形以避免裂紋</div>`;
+$('reductionResult').innerHTML=html;
+}
+
+// ========== 變形計算 ==========
+function setDefMode(m){
+$('defMode1').className=m===1?'active':'';
+$('defMode2').className=m===2?'active':'';
+}
+$('defShape').addEventListener('change',function(){
+$('defExtraRow').style.display=this.value==='ellipse'?'flex':'none';
+});
+function calcDeformation(){
+let d0=parseFloat($('defD0').value), h0=parseFloat($('defH0').value),
+d1=parseFloat($('defD1').value), shape=$('defShape').value;
+if(!d0||!h0||!d1){$('deformationResult').innerHTML='<div class="warning-box">請填寫所有參數</div>';return}
+
+let V0=Math.PI*d0*d0/4*h0;
+let A1;
+if(shape==='cylinder') A1=Math.PI*d1*d1/4;
+else if(shape==='hexagon') A1=3*Math.sqrt(3)/2*(d1/2)*(d1/2)*2; // 外接圓直徑
+else if(shape==='ellipse'){
+let d2=parseFloat($('defD2').value)||d1;
+A1=Math.PI*d1*d2/4;
+}
+
+let h1=V0/A1;
+$('defH1').value=h1.toFixed(3);
+
+let strain=Math.log(h0/h1);
+let areaReduction=(1-A1/(Math.PI*d0*d0/4))*100;
+
+$('deformationResult').innerHTML=`
+<div class="result-box">
+<div class="result-title">✅ 變形計算結果</div>
+<div class="result-row"><span class="r-label">原始體積</span><span class="r-value">${V0.toFixed(2)} mm³</span></div>
+<div class="result-row"><span class="r-label">目標截面積</span><span class="r-value">${A1.toFixed(2)} mm²</span></div>
+<div class="result-row highlight"><span class="r-label">目標高度 h₁</span><span class="r-value">${h1.toFixed(3)} mm</span></div>
+<div class="result-row"><span class="r-label">真應變 ε</span><span class="r-value">${strain.toFixed(4)}</span></div>
+<div class="result-row"><span class="r-label">截面積變化率</span><span class="r-value">${areaReduction.toFixed(2)}%</span></div>
+</div>`;
+}
+
+// ========== 線長 ==========
+function calcWire(){
+let rho=parseFloat($('wireMat').value), d=parseFloat($('wireDia').value),
+W=parseFloat($('wireW').value), k=parseFloat($('wireK').value);
+if(!d||!W){$('wireResult').innerHTML='<div class="warning-box">請填寫線徑和重量</div>';return}
+
+let A=Math.PI*d*d/4;
+let L=(W*1000)/(rho*A*k); // mm
+let Lm=L/1000;
+let weightPerM=rho*A/1000; // g/m
+
+$('wireResult').innerHTML=`
+<div class="result-box">
+<div class="result-title">✅ 線長計算結果</div>
+<div class="result-row"><span class="r-label">線材截面積</span><span class="r-value">${A.toFixed(2)} mm²</span></div>
+<div class="result-row"><span class="r-label">每米重量</span><span class="r-value">${weightPerM.toFixed(2)} g/m</span></div>
+<div class="result-row highlight"><span class="r-label">所需線長</span><span class="r-value">${L.toFixed(1)} mm (${Lm.toFixed(3)} m)</span></div>
+<div class="result-row"><span class="r-label">考慮利用率</span><span class="r-value">k = ${k}</span></div>
+</div>`;
+}
+
+// ========== 體積計算 ==========
+function setVolTab(t){
+[1,2,3].forEach(i=>$(`volTab${i}`).className=i===t?'active':'');
+}
+function toggleInner(){
+let t=$('innerToggle');
+t.classList.toggle('active');
+}
+function coneVolume(D1,D2,H){
+let r1=D1/2, r2=D2/2;
+return Math.PI*H/3*(r1*r1+r1*r2+r2*r2);
+}
+function sphereVolume(D){return Math.PI*D*D*D/6;}
+function cylinderVolume(D,H){return Math.PI*D*D/4*H;}
+
+function calcVolume(){
+let tab=document.querySelector('.tab-bar .active').id.slice(-1);
+let hasInner=$('innerToggle').classList.contains('active');
+let Vout, Vin=0, desc='';
+
+if(tab==='1'){
+let D1=parseFloat($('outD1').value), D2=parseFloat($('outD2').value), H=parseFloat($('outH').value);
+if(!D1||!D2||!H){$('volumeResult').innerHTML='<div class="warning-box">請填寫外形參數</div>';return}
+Vout=coneVolume(D1,D2,H);
+desc=`圓台 上徑${D1}×下徑${D2}×高${H}`;
+if(hasInner){
+let iD1=parseFloat($('inD1').value), iD2=parseFloat($('inD2').value), iH=parseFloat($('inH').value);
+if(iD1&&iD2&&iH) Vin=coneVolume(iD1,iD2,iH);
+}
+} else if(tab==='2'){
+let D=parseFloat($('outD1').value);
+if(!D){$('volumeResult').innerHTML='<div class="warning-box">請填寫外形直徑</div>';return}
+Vout=sphereVolume(D);
+desc=`球體 直徑${D}`;
+if(hasInner){
+let iD=parseFloat($('inD1').value);
+if(iD) Vin=sphereVolume(iD);
+}
+} else {
+let D=parseFloat($('outD1').value), H=parseFloat($('outH').value);
+if(!D||!H){$('volumeResult').innerHTML='<div class="warning-box">請填寫外形參數</div>';return}
+Vout=cylinderVolume(D,H);
+desc=`圓柱 直徑${D}×高${H}`;
+if(hasInner){
+let iD=parseFloat($('inD1').value), iH=parseFloat($('inH').value);
+if(iD&&iH) Vin=cylinderVolume(iD,iH);
+}
+}
+
+let Vnet=Vout-Vin;
+$('volumeResult').innerHTML=`
+<div class="result-box">
+<div class="result-title">✅ 體積計算結果</div>
+<div class="result-row"><span class="r-label">外形</span><span class="r-value">${desc}</span></div>
+<div class="result-row"><span class="r-label">外形體積</span><span class="r-value">${Vout.toFixed(2)} mm³ (${(Vout/1000).toFixed(2)} cm³)</span></div>
+${hasInner&&Vin>0?`<div class="result-row"><span class="r-label">內形體積</span><span class="r-value">${Vin.toFixed(2)} mm³</span></div>`:''}
+<div class="result-row highlight"><span class="r-label">淨體積</span><span class="r-value">${Vnet.toFixed(2)} mm³ (${(Vnet/1000).toFixed(2)} cm³)</span></div>
+${hasInner&&Vin>0&&Vin>=Vout?`<div class="warning-box">⚠️ 內形體積大於或等於外形體積，請檢查參數</div>`:''}
+</div>`;
+}
+
+// ========== 擠壓 ==========
+function calcExtrusion(){
+let d0=parseFloat($('extD0').value), h0=parseFloat($('extH0').value),
+d1=parseFloat($('extD1').value), mu=parseFloat($('extMu').value),
+sigma=parseFloat($('extSigma').value);
+if(!d0||!h0||!d1){$('extrusionResult').innerHTML='<div class="warning-box">請填寫所有參數</div>';return}
+
+let A0=Math.PI*d0*d0/4, A1=Math.PI*d1*d1/4;
+let lambda=A0/A1;
+let p=sigma*(1+mu*d0/(4*h0))*(Math.log(lambda));
+let F=p*A1;
+let V=A0*h0;
+
+$('extrusionResult').innerHTML=`
+<div class="result-box">
+<div class="result-title">✅ 擠壓計算結果</div>
+<div class="result-row"><span class="r-label">強束比 λ</span><span class="r-value">${lambda.toFixed(4)}</span></div>
+<div class="result-row"><span class="r-label">擠壓應力 p</span><span class="r-value">${p.toFixed(2)} MPa</span></div>
+<div class="result-row highlight"><span class="r-label">擠壓力 F</span><span class="r-value">${F.toFixed(0)} N (${(F/1000).toFixed(1)} kN)</span></div>
+<div class="result-row"><span class="r-label">坯料體積</span><span class="r-value">${V.toFixed(2)} mm³</span></div>
+</div>`;
+}
+
+// ========== 鐓粗 ==========
+function calcUpsetting(){
+let d0=parseFloat($('upD0').value), h0=parseFloat($('upH0').value),
+h1=parseFloat($('upH1').value), mu=parseFloat($('upMu').value),
+sigma=parseFloat($('upSigma').value);
+if(!d0||!h0||!h1){$('upsettingResult').innerHTML='<div class="warning-box">請填寫所有參數</div>';return}
+
+let A0=Math.PI*d0*d0/4;
+let d1=d0*Math.sqrt(h0/h1);
+let A1=Math.PI*d1*d1/4;
+let p=sigma*(1+mu*d0/(3*h1));
+let F=p*A1;
+let strain=Math.log(h0/h1);
+
+$('upsettingResult').innerHTML=`
+<div class="result-box">
+<div class="result-title">✅ 鐓粗計算結果</div>
+<div class="result-row"><span class="r-label">鐓粗後直徑</span><span class="r-value">${d1.toFixed(3)} mm</span></div>
+<div class="result-row"><span class="r-label">鐓粗比</span><span class="r-value">${(h0/h1).toFixed(3)}</span></div>
+<div class="result-row"><span class="r-label">真應變 ε</span><span class="r-value">${strain.toFixed(4)}</span></div>
+<div class="result-row"><span class="r-label">流動應力</span><span class="r-value">${p.toFixed(2)} MPa</span></div>
+<div class="result-row highlight"><span class="r-label">鐓粗力 F</span><span class="r-value">${F.toFixed(0)} N (${(F/1000).toFixed(1)} kN)</span></div>
+</div>`;
+}
+
+// ========== 拉伸 ==========
+function calcDrawing(){
+let d0=parseFloat($('drD0').value), d1=parseFloat($('drD1').value),
+sigma=parseFloat($('drSigma').value), mu=parseFloat($('drMu').value);
+if(!d0||!d1){$('drawingResult').innerHTML='<div class="warning-box">請填寫直徑參數</div>';return}
+
+let A0=Math.PI*d0*d0/4, A1=Math.PI*d1*d1/4;
+let lambda=A0/A1;
+let p=sigma*(1+mu)*(Math.log(lambda));
+let F=p*A1;
+let reduction=(1-d1/d0)*100;
+
+$('drawingResult').innerHTML=`
+<div class="result-box">
+<div class="result-title">✅ 拉伸計算結果</div>
+<div class="result-row"><span class="r-label">截面積 A₀→A₁</span><span class="r-value">${A0.toFixed(2)} → ${A1.toFixed(2)} mm²</span></div>
+<div class="result-row"><span class="r-label">強束比 λ</span><span class="r-value">${lambda.toFixed(4)}</span></div>
+<div class="result-row"><span class="r-label">直徑縮減率</span><span class="r-value">${reduction.toFixed(2)}%</span></div>
+<div class="result-row"><span class="r-label">拉伸應力 p</span><span class="r-value">${p.toFixed(2)} MPa</span></div>
+<div class="result-row highlight"><span class="r-label">拉伸力 F</span><span class="r-value">${F.toFixed(0)} N (${(F/1000).toFixed(1)} kN)</span></div>
+</div>`;
+
+if(reduction>35) $('drawingResult').innerHTML+=`<div class="warning-box">⚠️ 縮減率超過35%，超出一般冷拉伸安全範圍，建議多道次拉伸</div>`;
+}
+
+// ========== 杯頭 ==========
+function calcCupHead(){
+let D=parseFloat($('cupD').value), Hd=parseFloat($('cupHeadD').value),
+Hh=parseFloat($('cupHeadH').value), L=parseFloat($('cupL').value),
+rho=parseFloat($('cupMat').value);
+if(!D||!Hd||!Hh||!L){$('cupHeadResult').innerHTML='<div class="warning-box">請填寫所有參數</div>';return}
+
+let threadL=L-Hh;
+let headV=Math.PI*Hd*Hd/4*Hh*0.6; // 近似六角頭體積（簡化）
+let bodyV=Math.PI*D*D/4*threadL;
+let totalV=headV+bodyV;
+let weight=totalV/1000*rho;
+
+$('cupHeadResult').innerHTML=`
+<div class="result-box">
+<div class="result-title">✅ 杯頭螺絲計算結果</div>
+<div class="result-row"><span class="r-label">螺紋段長度</span><span class="r-value">${threadL.toFixed(1)} mm</span></div>
+<div class="result-row"><span class="r-label">頭部體積(估)</span><span class="r-value">${headV.toFixed(2)} mm³</span></div>
+<div class="result-row"><span class="r-label">桿部體積</span><span class="r-value">${bodyV.toFixed(2)} mm³</span></div>
+<div class="result-row"><span class="r-label">總體積</span><span class="r-value">${totalV.toFixed(2)} mm³ (${(totalV/1000).toFixed(2)} cm³)</span></div>
+<div class="result-row highlight"><span class="r-label">單件重量</span><span class="r-value">${weight.toFixed(3)} g</span></div>
+</div>`;
+}
+</script>
+</body>
+</html>
