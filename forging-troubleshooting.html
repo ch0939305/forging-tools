@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>鍛造生產問題排除</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#f0f2f5;--card:#fff;--text:#1a1a2e;--text2:#64748b;--border:#e2e8f0;--primary:#2563eb;--primary-dark:#1d4ed8;--primary-bg:#eff6ff;--success:#16a34a;--warn:#d97706;--danger:#dc2626;--danger-bg:#fef2f2;--warn-bg:#fffbeb;--shadow:0 2px 12px rgba(0,0,0,0.08);--radius:14px;--header-bg:linear-gradient(135deg,#1e3a5f,#0f2b4a)}
+.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--primary:#60a5fa;--primary-dark:#3b82f6;--primary-bg:#1e293b;--success:#4ade80;--warn:#fbbf24;--danger:#f87171;--danger-bg:#451a1a;--warn-bg:#452a1a;--shadow:0 2px 12px rgba(0,0,0,0.3);--header-bg:linear-gradient(135deg,#0f172a,#1e293b)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;transition:background .3s,color .3s}
+.header{background:var(--header-bg);color:#fff;padding:16px;position:sticky;top:0;z-index:100}
+.header-top{display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:17px;font-weight:700}
+.header .sub{font-size:11px;opacity:.7;margin-top:2px}
+.theme-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:#fff;transition:all .3s;flex-shrink:0}
+.theme-btn:active{transform:scale(.9)}
+.tab-bar{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:52px;z-index:99}
+.tab-item{flex:1;text-align:center;padding:12px 6px;cursor:pointer;border-bottom:3px solid transparent;color:var(--text2);font-size:13px;font-weight:500;transition:all .2s;user-select:none}
+.tab-item.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-item:active{opacity:.6}
+.page{display:none;max-width:900px;margin:0 auto;padding:8px}
+.page.active{display:block}
+.card{background:var(--card);border-radius:var(--radius);margin-bottom:10px;box-shadow:var(--shadow);overflow:hidden;transition:background .3s}
+.card-body{padding:14px 16px}
+.card-title{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.btn{width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2)}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--text);padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.15);z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;border:1px solid var(--border)}
+.toast.show{opacity:1}
+
+/* ===== 診斷精靈 ===== */
+.diag-step{padding:12px 0}
+.diag-step h3{font-size:15px;font-weight:600;margin-bottom:10px}
+.diag-opts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.diag-opt{padding:10px 16px;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;transition:all .2s;background:var(--card);color:var(--text);user-select:none}
+.diag-opt:active{transform:scale(.95)}
+.diag-opt.selected{border-color:var(--primary);background:var(--primary-bg);color:var(--primary);font-weight:600}
+.diag-opt.disabled{opacity:.4;pointer-events:none}
+.diag-report{border-left:4px solid var(--danger);padding:12px 14px;background:var(--card);border-radius:0 var(--radius) var(--radius) 0;margin-top:10px}
+.diag-report h4{font-size:14px;font-weight:600;margin-bottom:6px}
+.diag-report h5{font-size:12px;color:var(--text2);font-weight:500;margin:8px 0 4px}
+.diag-cause{padding:6px 0 6px 14px;font-size:13px;position:relative}
+.diag-cause::before{content:'▸';position:absolute;left:0;color:var(--primary)}
+.diag-tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600;margin-right:4px}
+.diag-tag.danger{background:var(--danger-bg);color:var(--danger)}
+.diag-tag.warn{background:var(--warn-bg);color:var(--warn)}
+.diag-tag.success{background:#f0fdf4;color:var(--success)}
+
+/* ===== 排除指南 ===== */
+.guide-layout{display:flex;gap:10px;min-height:calc(100vh - 160px)}
+.guide-sidebar{width:140px;flex-shrink:0;position:sticky;top:110px;align-self:flex-start}
+.guide-main{flex:1;min-width:0}
+.guide-cat{padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;transition:all .2s;margin-bottom:4px;user-select:none;border:1px solid transparent}
+.guide-cat:hover{background:var(--primary-bg)}
+.guide-cat.active{background:var(--primary-bg);border-color:var(--primary);color:var(--primary);font-weight:600}
+.guide-cat .gicon{font-size:16px;margin-right:4px}
+/* Note area */
+.note-area{width:100%;min-height:180px;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;font-family:inherit;outline:none;resize:vertical;background:var(--card);color:var(--text);transition:border .2s}
+.note-area:focus{border-color:var(--primary)}
+.note-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.note-title{font-size:15px;font-weight:600}
+.note-meta{font-size:11px;color:var(--text2)}
+/* Guide content section */
+.guide-section{display:none;margin-top:12px}
+.guide-section.show{display:block}
+.gs-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.gs-toggle{padding:6px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;background:var(--card);color:var(--text2);transition:all .2s}
+.gs-toggle.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.step-item{padding:10px 12px;border-radius:10px;background:var(--bg);margin-bottom:6px;display:flex;gap:10px;align-items:flex-start}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-content{flex:1;font-size:13px;line-height:1.6}
+.step-title{font-weight:600;color:var(--text)}
+.step-check{margin-top:4px;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer}
+.step-check input{width:16px;height:16px;accent-color:var(--primary)}
+.progress-bar{height:4px;border-radius:4px;background:var(--border);margin:8px 0;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;background:var(--primary);transition:width .3s}
+.feedback-btn{padding:6px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;background:var(--card);color:var(--text2);transition:all .2s;margin-right:4px;margin-top:4px}
+.feedback-btn:active{transform:scale(.95)}
+.feedback-btn.active-yes{background:var(--success);color:#fff;border-color:var(--success)}
+.feedback-btn.active-no{background:var(--danger);color:#fff;border-color:var(--danger)}
+.feedback-stat{font-size:11px;color:var(--text2);margin-top:4px}
+
+@media(max-width:640px){
+  .guide-layout{flex-direction:column;min-height:auto}
+  .guide-sidebar{width:100%;position:static;display:flex;gap:4px;overflow-x:auto;padding-bottom:4px}
+  .guide-sidebar::-webkit-scrollbar{display:none}
+  .guide-cat{white-space:nowrap;flex-shrink:0;margin-bottom:0}
+}
+
+/* Modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-content{background:var(--card);border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;padding:20px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;border-radius:4px;background:var(--border);margin:0 auto 12px}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.footer{text-align:center;padding:16px;color:var(--text2);font-size:10px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>🔧 鍛造生產問題排除</h1>
+      <div class="sub">Forging Troubleshooting System</div>
+    </div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+  </div>
+</div>
+
+<div class="tab-bar" id="tabBar">
+  <div class="tab-item active" onclick="switchTab(0)">🤖 智慧診斷</div>
+  <div class="tab-item" onclick="switchTab(1)">📋 排除指南</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ===== TAB 0: 智慧診斷精靈 ===== -->
+<div id="page0" class="page active">
+  <div class="card">
+    <div class="card-body" id="diagApp"></div>
+  </div>
+</div>
+
+<!-- ===== TAB 1: 排除指南 ===== -->
+<div id="page1" class="page">
+  <div class="guide-layout">
+    <!-- Left sidebar -->
+    <div class="guide-sidebar" id="guideSidebar"></div>
+    <!-- Right content -->
+    <div class="guide-main" id="guideMain"></div>
+  </div>
+</div>
+
+<div class="footer">鍛造生產問題排除 v2.0</div>
+
+<script>
+// ========== DATA ==========
+const categories = [
+  {id:'break',name:'斷裂',icon:'💥',hasGuide:true},
+  {id:'die',name:'模具',icon:'🔩',hasGuide:true},
+  {id:'quality',name:'品質',icon:'📐',hasGuide:true},
+  {id:'size',name:'尺寸',icon:'📏',hasGuide:true},
+  {id:'stick',name:'冲棒卡料',icon:'🛢️',hasGuide:true},
+  {id:'skew',name:'產品端面歪斜',icon:'↗️',hasGuide:true},
+  {id:'other',name:'其他',icon:'📋',hasGuide:false},
+  {id:'xiaodu',name:'小肚文件',icon:'📁',hasGuide:false}
+];
+
+const issueData = {
+  break:{
+    title:'冲棒斷裂',icon:'💥',
+    questions:[
+      {q:'冲棒長徑比 L/D 大約多少？',opts:['<3','3~5','>5'],weights:[0.1,0.3,0.9],tag:'危險'},
+      {q:'沖壓速度？',opts:['慢(<30 spm)','中(30-60 spm)','快(>60 spm)'],weights:[0.1,0.3,0.7],tag:'高風險'},
+      {q:'有無使用導套？',opts:['有','無'],weights:[0.1,0.8],tag:'危險'},
+      {q:'冲棒材質？',opts:['SKD11','SKH51','ASP60/粉末鋼'],weights:[0.6,0.3,0.1],tag:'注意'}
+    ],
+    causes:[
+      {text:'冲棒細長比過大（L/D > 5），挫曲失穩',sev:'danger'},
+      {text:'冲棒與下模孔偏心對位不正',sev:'danger'},
+      {text:'沖壓速度過快，衝擊載荷過大',sev:'warn'},
+      {text:'冲棒材質硬度不足或熱處理不良',sev:'warn'},
+      {text:'間隙過小導致摩擦過大',sev:'warn'},
+      {text:'潤滑失效，摩擦力急增',sev:'warn'}
+    ],
+    guide:{
+      principle:'冲棒斷裂主要來自兩大機制：① 細長比 L/D > 5 時，軸向壓力超過臨界挫曲載荷，冲棒失穩彎曲後斷裂；② 偏心對位造成彎矩集中，局部應力超過材料強度。',
+      steps:[
+        '檢查冲棒與下模孔的同心度（使用芯棒對中）',
+        '量測冲棒直徑與模具內徑，確認間隙在圖面規範內',
+        '檢查冲棒長徑比 L/D，若大於 5 建議使用導套補強',
+        '降低沖壓速度（嘗試降速 20%）',
+        '更換材質（建議改用 SKH51 / ASP60 / 粉末高速鋼）',
+        '確認熱處理硬度達 HRC 60-65 且回火充分',
+        '檢查沖壓油供油是否正常，增加潤滑量'
+      ],
+      tip:'細長冲棒建議使用整體導套（solid guide bush）來支撐',
+      img:'📏'
+    }
+  },
+  die:{
+    title:'模具異常',icon:'🔩',
+    questions:[
+      {q:'冲棒表面硬度？',opts:['≥ HRC 58','HRC 50-58','< HRC 50'],weights:[0.1,0.4,0.9],tag:'注意'},
+      {q:'潤滑情況？',opts:['充足且使用 EP 油','一般潤滑油','潤滑不足'],weights:[0.1,0.3,0.8],tag:'高風險'},
+      {q:'胚料硬度是否穩定？',opts:['穩定','偶有變異','經常變異'],weights:[0.1,0.4,0.8],tag:'注意'},
+      {q:'冲棒表面處理？',opts:['PVD/TiN 鍍層','無鍍層'],weights:[0.2,0.7],tag:'注意'}
+    ],
+    causes:[
+      {text:'冲棒表面硬度不足，耐磨性差',sev:'warn'},
+      {text:'模具間隙過大或過小，加速磨耗',sev:'warn'},
+      {text:'沖壓油潤滑性不佳，摩擦係數過高',sev:'warn'},
+      {text:'胚料硬度變異，衝擊載荷不穩定',sev:'warn'},
+      {text:'冲棒表面粗糙度不足（Ra > 0.4μm）',sev:'success'}
+    ],
+    guide:{
+      principle:'模具磨耗是沖壓加工中最常見的失效模式。磨耗速率取決於：冲棒表面硬度、潤滑條件、模具間隙、胚料硬度變異。PVD 鍍層可將摩擦係數降低 50% 以上，顯著延長壽命。',
+      steps:[
+        '量測冲棒硬度，確認 ≥ HRC 58',
+        '檢查模具間隙是否在材料厚度的 5-8%',
+        '更換潤滑油為極壓添加劑型（EP）',
+        '檢查胚料硬度是否變異（退火不良）',
+        '冲棒表面建議 PVD / TiN 鍍層處理',
+        '提高冲棒表面光潔度（Ra ≤ 0.4μm）',
+        '記錄每次更換週期，建立壽命數據庫'
+      ],
+      tip:'PVD 鍍層可提升衝棒壽命 2-5 倍',
+      img:'🔬'
+    }
+  },
+  quality:{
+    title:'毛邊過大',icon:'📐',
+    questions:[
+      {q:'冲棒刀口狀態？',opts:['良好','輕微磨損','明顯磨損/崩口'],weights:[0.1,0.4,0.9],tag:'注意'},
+      {q:'模具間隙大約多少？',opts:['料厚 4-6%','料厚 6-10%','> 料厚 10%'],weights:[0.1,0.4,0.8],tag:'高風險'},
+      {q:'壓料板力量？',opts:['足夠','不足'],weights:[0.1,0.7],tag:'注意'},
+      {q:'胚料厚度公差？',opts:['±0.05mm 內','±0.1mm 內','超過 ±0.1mm'],weights:[0.1,0.3,0.7],tag:'注意'}
+    ],
+    causes:[
+      {text:'冲棒與下模間隙過大',sev:'danger'},
+      {text:'冲棒刀口磨損',sev:'danger'},
+      {text:'下模刀口磨耗',sev:'warn'},
+      {text:'壓料板力量不足',sev:'warn'},
+      {text:'胚料厚度變異過大',sev:'warn'},
+      {text:'沖壓深度不足',sev:'success'}
+    ],
+    guide:{
+      principle:'毛邊（burr）產生的根本原因是冲棒與下模之間的間隙過大或刀口磨損，導致材料在剪斷過程中被拉長而非整齊剪斷。毛邊高度建議控制在 ≤ 0.1mm。',
+      steps:[
+        '量測冲棒刀口狀態，確認有無磨損或崩口',
+        '檢查單邊間隙，應為料厚的 4-6%',
+        '檢查下模刀口是否磨耗，必要時研磨或更換',
+        '確認壓料板力量是否足夠',
+        '檢查胚料厚度公差是否在 ±0.05mm 內',
+        '調整沖壓深度（切入下模 0.5-1mm）'
+      ],
+      tip:'毛邊高度建議 ≤ 0.1mm 為合格',
+      img:'📐'
+    }
+  },
+  size:{
+    title:'尺寸不穩定',icon:'📏',
+    questions:[
+      {q:'冲棒磨耗狀態？',opts:['穩定','輕微磨耗','明顯磨耗'],weights:[0.1,0.4,0.8],tag:'注意'},
+      {q:'模具溫度？',opts:['< 40°C','40-60°C','> 60°C'],weights:[0.1,0.3,0.7],tag:'危險'},
+      {q:'胚料硬度變異？',opts:['穩定','偶有變異','經常變異'],weights:[0.1,0.4,0.8],tag:'注意'},
+      {q:'鎖固螺絲扭力？',opts:['定期檢查扭力','偶爾檢查','未檢查'],weights:[0.1,0.3,0.7],tag:'注意'}
+    ],
+    causes:[
+      {text:'冲棒磨耗不一致，導致尺寸漂移',sev:'warn'},
+      {text:'模具溫度變化過大（> 60°C）',sev:'danger'},
+      {text:'胚料硬度分布不均',sev:'warn'},
+      {text:'沖床平行度偏差',sev:'danger'},
+      {text:'鎖固螺絲鬆動',sev:'warn'},
+      {text:'模具墊片變形',sev:'warn'}
+    ],
+    guide:{
+      principle:'尺寸不穩定通常是多重因素疊加的結果。冲棒磨耗導致尺寸緩慢漂移，溫度變化造成熱膨脹差異，胚料硬度變異則影響回彈量。建議建立管制圖（CPK ≥ 1.33）監控製程穩定性。',
+      steps:[
+        '檢查冲棒磨耗狀態，建立定期更換標準',
+        '監控模具溫度，確認有無過熱（< 60°C）',
+        '檢查胚料硬度變異（抽檢 5pcs）',
+        '檢查沖床平行度及滑塊垂直度',
+        '確認所有鎖固螺絲扭力值一致',
+        '檢查模具墊片是否平整無變形',
+        '每 1000 件抽檢一次尺寸，製作管制圖'
+      ],
+      tip:'CPK ≥ 1.33 為製程穩定標準',
+      img:'📊'
+    }
+  },
+  stick:{
+    title:'卡料/頂料不順',icon:'🛢️',
+    questions:[
+      {q:'冲棒表面粗糙度 Ra？',opts:['≤ 0.8μm','0.8-1.6μm','> 1.6μm'],weights:[0.1,0.3,0.8],tag:'注意'},
+      {q:'潤滑油量？',opts:['充足','一般','不足'],weights:[0.1,0.3,0.8],tag:'高風險'},
+      {q:'沖壓深度？',opts:['正常','略深','過深'],weights:[0.1,0.3,0.8],tag:'注意'},
+      {q:'冲棒有無鍍層？',opts:['DLC/TiAlN','TiN','無'],weights:[0.2,0.4,0.8],tag:'注意'}
+    ],
+    causes:[
+      {text:'冲棒表面粗糙，摩擦阻力大',sev:'warn'},
+      {text:'潤滑不足或潤滑油分布不均',sev:'danger'},
+      {text:'冲棒與模具間隙過小',sev:'warn'},
+      {text:'沖壓深度過大，脫模困難',sev:'warn'},
+      {text:'材料黏著性強（如鋁合金、不鏽鋼）',sev:'warn'},
+      {text:'冲棒表面無低摩擦鍍層',sev:'success'}
+    ],
+    guide:{
+      principle:'卡料與頂料不順的主要成因是冲棒與材料之間的摩擦阻力過大。粗糙表面、潤滑不足、間隙過小都會增加脫模力。DLC 鍍層摩擦係數僅 0.1，遠低於 TiN（0.4），是最有效的解決方案。',
+      steps:[
+        '檢查冲棒表面粗糙度，建議 Ra ≤ 0.8μm',
+        '確認潤滑油量充足且分布均勻',
+        '量測衝棒與模具間隙，確認在標準範圍',
+        '減少沖壓深度（切入下模深度調降）',
+        '冲棒表面鍍 DLC 或 TiAlN 降低摩擦係數',
+        '增加頂料銷力量或更換彈簧',
+        '檢查材料是否黏性過高（更換材料批號）'
+      ],
+      tip:'DLC 鍍層摩擦係數僅 0.1，優於 TiN',
+      img:'🛢️'
+    }
+  },
+  skew:{
+    title:'產品端面歪斜',icon:'↗️',
+    questions:[
+      {q:'冲棒與模具同心度？',opts:['良好','輕微偏差','明顯偏差'],weights:[0.1,0.4,0.9],tag:'危險'},
+      {q:'胚料放置位置？',opts:['精確對中','偶有偏移','經常偏移'],weights:[0.1,0.3,0.8],tag:'高風險'},
+      {q:'沖床平行度？',opts:['最近校驗合格','超過校驗週期','從未校驗'],weights:[0.1,0.4,0.8],tag:'注意'},
+      {q:'冲棒有無彎曲？',opts:['無','輕微','明顯'],weights:[0.1,0.5,0.9],tag:'危險'}
+    ],
+    causes:[
+      {text:'冲棒與模具同心度偏差，力量分布不均',sev:'danger'},
+      {text:'胚料放置偏移，單側受力',sev:'danger'},
+      {text:'沖床平行度劣化',sev:'danger'},
+      {text:'冲棒彎曲變形',sev:'danger'},
+      {text:'模具間隙不均（四方向量測差異大）',sev:'warn'},
+      {text:'下模或墊片不平整',sev:'warn'}
+    ],
+    guide:{
+      principle:'產品端面歪斜的根本原因是沖壓過程中力量分布不均勻。當冲棒與模具不同心、胚料偏移、或沖床平行度不足時，單側受力過大使產品產生傾斜變形。',
+      steps:[
+        '檢查冲棒與模具同心度（使用芯棒對中）',
+        '確認胚料定位準確無偏移',
+        '檢查沖床平行度及滑塊垂直度',
+        '檢查冲棒有無彎曲（滾動法檢測）',
+        '四方向量測模具間隙，確認均勻',
+        '確認下模及墊片平整無變形',
+        '降低沖壓速度，減少動態偏心'
+      ],
+      tip:'端面歪斜通常伴隨冲棒壽命縮短，應優先解決對中問題',
+      img:'↗️'
+    }
+  }
+};
+
+// ========== STATE ==========
+let currentTheme = localStorage.getItem('forgeTheme') || 'light';
+let activeTab = 0;
+let activeCat = 'break';
+let noteData = JSON.parse(localStorage.getItem('forgeNotes') || '{}');
+let stepChecks = JSON.parse(localStorage.getItem('forgeStepChecks') || '{}');
+let feedbackData = JSON.parse(localStorage.getItem('forgeFeedback') || '{}');
+let diagState = {step:0,issueId:null,answers:[]};
+
+// ========== INIT ==========
+document.addEventListener('DOMContentLoaded',()=>{
+  if(currentTheme==='dark') document.body.classList.add('dark');
+  document.getElementById('themeBtn').textContent = currentTheme==='dark'?'☀️':'🌙';
+  renderDiag();
+  renderSidebar();
+  renderGuideMain();
+});
+
+function toggleTheme(){
+  currentTheme = currentTheme==='light'?'dark':'light';
+  document.body.classList.toggle('dark');
+  document.getElementById('themeBtn').textContent = currentTheme==='dark'?'☀️':'🌙';
+  localStorage.setItem('forgeTheme',currentTheme);
+}
+
+function switchTab(idx){
+  activeTab = idx;
+  document.querySelectorAll('.tab-item').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',i===idx));
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ========== SIDEBAR ==========
+function renderSidebar(){
+  const sb = document.getElementById('guideSidebar');
+  sb.innerHTML = categories.map(c=>`
+    <div class="guide-cat ${c.id===activeCat?'active':''}" onclick="selectCat('${c.id}')">
+      <span class="gicon">${c.icon}</span>${c.name}
+    </div>
+  `).join('');
+}
+
+function selectCat(id){
+  activeCat = id;
+  renderSidebar();
+  renderGuideMain();
+}
+
+// ========== GUIDE MAIN ==========
+function renderGuideMain(){
+  const main = document.getElementById('guideMain');
+  const cat = categories.find(c=>c.id===activeCat);
+  const noteKey = 'note_'+activeCat;
+  const note = noteData[noteKey] || '';
+  const hasGuide = cat.hasGuide && issueData[activeCat];
+  const iss = hasGuide ? issueData[activeCat] : null;
+  const checks = stepChecks[activeCat] || [];
+  const fb = feedbackData[activeCat] || {yes:0,no:0};
+  const pct = (fb.yes+fb.no)>0 ? Math.round(fb.yes/(fb.yes+fb.no)*100) : null;
+  const done = checks.filter(Boolean).length;
+  const total = iss ? iss.guide.steps.length : 0;
+
+  let html = `
+    <div class="card">
+      <div class="card-body">
+        <div class="note-header">
+          <span class="note-title">${cat.icon} ${cat.name} 筆記</span>
+          <span class="note-meta">${note ? note.length+' 字' : '空白'}</span>
+        </div>
+        <textarea class="note-area" id="noteEditor" oninput="saveNote()" placeholder="在 ${cat.name} 分類中寫下筆記⋯">${note}</textarea>
+        <div style="text-align:right;margin-top:4px">
+          <button class="feedback-btn" onclick="clearNote()" style="color:var(--danger)">🗑️ 清空</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if(hasGuide && iss){
+    html += `
+      <div class="card">
+        <div class="card-body">
+          <div class="gs-header">
+            <span style="font-size:14px;font-weight:600">${iss.icon} ${iss.title} 排除指南</span>
+          </div>
+
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px">📖 原理說明</div>
+            <div style="font-size:13px;line-height:1.7;color:var(--text);padding:10px 12px;background:var(--bg);border-radius:10px">${iss.guide.principle}</div>
+          </div>
+
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${total>0?(done/total*100):0}%"></div>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px">排除進度：${done}/${total}</div>
+
+          ${iss.guide.steps.map((s,i)=>`
+            <div class="step-item">
+              <div class="step-num">${i+1}</div>
+              <div class="step-content">
+                <span class="step-title">${s}</span>
+                <div class="step-check">
+                  <input type="checkbox" ${checks[i]?'checked':''} onchange="toggleStep(${i})">
+                  <span>${checks[i]?'✅ 已完成':'標記完成'}</span>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+
+          <div style="margin-top:10px;padding:10px 12px;background:var(--warn-bg);border-radius:10px;font-size:13px;display:flex;gap:8px;align-items:flex-start">
+            <span>💡</span>
+            <span>${iss.guide.tip}</span>
+          </div>
+
+          <div style="margin-top:12px">
+            <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px">📊 這個方法有效嗎？</div>
+            <div>
+              <button class="feedback-btn" onclick="giveFeedback(true)">👍 有效</button>
+              <button class="feedback-btn" onclick="giveFeedback(false)">👎 無效</button>
+              <button class="feedback-btn" onclick="clearFeedback()" style="color:var(--text2)">⟲ 重置</button>
+            </div>
+            ${pct!==null ? `<div class="feedback-stat">👍 有效率 ${pct}%（${fb.yes+fb.no} 次回饋）</div>` : `<div class="feedback-stat">尚無回饋</div>`}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  main.innerHTML = html;
+}
+
+function saveNote(){
+  const val = document.getElementById('noteEditor').value;
+  noteData['note_'+activeCat] = val;
+  localStorage.setItem('forgeNotes',JSON.stringify(noteData));
+  // Update meta
+  document.querySelector('.note-meta').textContent = val ? val.length+' 字' : '空白';
+}
+
+function clearNote(){
+  document.getElementById('noteEditor').value = '';
+  saveNote();
+  showToast('🗑️ 筆記已清空');
+}
+
+function toggleStep(idx){
+  if(!stepChecks[activeCat]) stepChecks[activeCat] = [];
+  stepChecks[activeCat][idx] = !stepChecks[activeCat][idx];
+  localStorage.setItem('forgeStepChecks',JSON.stringify(stepChecks));
+  renderGuideMain();
+}
+
+function giveFeedback(val){
+  if(!feedbackData[activeCat]) feedbackData[activeCat] = {yes:0,no:0};
+  if(val) feedbackData[activeCat].yes++;
+  else feedbackData[activeCat].no++;
+  localStorage.setItem('forgeFeedback',JSON.stringify(feedbackData));
+  renderGuideMain();
+  showToast(val?'👍 感謝回饋':'👎 已記錄');
+}
+
+function clearFeedback(){
+  feedbackData[activeCat] = {yes:0,no:0};
+  localStorage.setItem('forgeFeedback',JSON.stringify(feedbackData));
+  renderGuideMain();
+  showToast('⟲ 回饋已重置');
+}
+
+// ========== DIAGNOSIS WIZARD ==========
+function renderDiag(){
+  const app = document.getElementById('diagApp');
+  diagState = {step:0,issueId:null,answers:[]};
+
+  app.innerHTML = `
+    <div class="card-title">🤖 智慧診斷精靈</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">回答幾個問題，系統幫你找出最可能的原因</p>
+    <div id="diagContent"></div>
+  `;
+  renderDiagStep();
+}
+
+function renderDiagStep(){
+  const c = document.getElementById('diagContent');
+  const s = diagState;
+
+  if(s.step === 0){
+    // Step 1: Select issue
+    c.innerHTML = `
+      <div class="diag-step">
+        <h3>步驟 1/3：選擇異常現象</h3>
+        <div class="diag-opts">
+          ${Object.entries(issueData).map(([k,v])=>`
+            <div class="diag-opt ${s.issueId===k?'selected':''}" onclick="selectIssue('${k}')">${v.icon} ${v.title}</div>
+          `).join('')}
+        </div>
+        <button class="btn btn-primary" onclick="nextDiagStep()" style="${s.issueId?'':'opacity:.4;pointer-events:none'}">下一步 →</button>
+      </div>
+    `;
+  } else if(s.step <= Object.keys(issueData[s.issueId||'break'].questions).length){
+    // Steps 2+: Ask questions
+    const iss = issueData[s.issueId||'break'];
+    const qIdx = s.step - 1;
+    const q = iss.questions[qIdx];
+    if(!q){
+      // All questions answered, show results
+      showDiagResult();
+      return;
+    }
+
+    c.innerHTML = `
+      <div class="diag-step">
+        <h3>步驟 ${s.step+1}/3：${q.q}</h3>
+        <div class="diag-opts">
+          ${q.opts.map((o,i)=>`
+            <div class="diag-opt ${s.answers[qIdx]===i?'selected':''}" onclick="answerQ(${qIdx},${i})">${o}</div>
+          `).join('')}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-outline" onclick="prevDiagStep()" style="flex:1">← 上一步</button>
+          <button class="btn btn-primary" onclick="nextDiagStep()" style="flex:1;${s.answers[qIdx]===undefined?'opacity:.4;pointer-events:none':''}">${s.step >= iss.questions.length?'🔍 診斷': '下一步 →'}</button>
+        </div>
+      </div>
+    `;
+  } else {
+    showDiagResult();
+  }
+}
+
+function selectIssue(id){
+  diagState.issueId = id;
+  renderDiagStep();
+}
+
+function answerQ(idx,val){
+  diagState.answers[idx] = val;
+  renderDiagStep();
+}
+
+function nextDiagStep(){
+  const iss = issueData[diagState.issueId||'break'];
+  if(diagState.step === 0 && !diagState.issueId) return;
+  if(diagState.step > 0){
+    const qIdx = diagState.step - 1;
+    if(diagState.answers[qIdx] === undefined) return;
+  }
+  diagState.step++;
+  renderDiagStep();
+}
+
+function prevDiagStep(){
+  if(diagState.step > 0) diagState.step--;
+  renderDiagStep();
+}
+
+function showDiagResult(){
+  const c = document.getElementById('diagContent');
+  const iss = issueData[diagState.issueId||'break'];
+
+  // Calculate total risk score
+  let totalScore = 0;
+  let maxScore = 0;
+  iss.questions.forEach((q,i)=>{
+    const ans = diagState.answers[i];
+    if(ans !== undefined){
+      totalScore += q.weights[ans];
+      maxScore += Math.max(...q.weights);
+    }
+  });
+
+  const riskPct = maxScore > 0 ? Math.round(totalScore/maxScore*100) : 50;
+  const riskLabel = riskPct >= 70 ? '⚠️ 高風險' : riskPct >= 40 ? '⚡ 需要注意' : '✅ 低風險';
+  const riskClass = riskPct >= 70 ? 'danger' : riskPct >= 40 ? 'warn' : 'success';
+
+  c.innerHTML = `
+    <div class="diag-report">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h4>🎯 診斷結果：${iss.title}</h4>
+        <span class="diag-tag ${riskClass}">${riskLabel}</span>
+      </div>
+
+      <h5>📊 風險評估</h5>
+      <div class="progress-bar" style="margin-bottom:10px">
+        <div class="progress-fill" style="width:${riskPct}%;background:${riskPct>=70?'var(--danger)':riskPct>=40?'var(--warn)':'var(--success)'}"></div>
+      </div>
+
+      <h5>🛠️ 可能原因（依風險排序）</h5>
+      ${iss.causes.map((c,i)=>`
+        <div class="diag-cause">
+          <span class="diag-tag ${c.sev}">${c.sev==='danger'?'⚠️':c.sev==='warn'?'⚡':'🔵'}</span>
+          ${c.text}
+        </div>
+      `).join('')}
+
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="gotoGuide()" style="flex:1">📋 查看排除步驟</button>
+        <button class="btn btn-outline" onclick="resetDiag()" style="flex:1">⟲ 重新診斷</button>
+      </div>
+    </div>
+  `;
+}
+
+function gotoGuide(){
+  if(diagState.issueId && categories.find(c=>c.id===diagState.issueId)){
+    activeCat = diagState.issueId;
+    renderSidebar();
+    renderGuideMain();
+  }
+  switchTab(1);
+}
+
+function resetDiag(){
+  renderDiag();
+}
+</script>
+</body>
+</html>
